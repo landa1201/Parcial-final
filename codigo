@@ -1,0 +1,142 @@
+
+# vista.py
+
+
+import tkinter as tk
+from tkinter import messagebox
+
+class Vista:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Tienda de Moda")
+        self.catalogo_frame = tk.Frame(self.root)
+        self.catalogo_frame.pack()
+
+        self.entry_busqueda = tk.Entry(self.root)
+        self.entry_busqueda.pack(pady=5)
+
+        self.boton_buscar = tk.Button(self.root, text="Buscar")
+        self.boton_buscar.pack(pady=2)
+
+        self.boton_mostrar_todo = tk.Button(self.root, text="Mostrar todo")
+        self.boton_mostrar_todo.pack(pady=2)
+
+        self.lista_catalogo = tk.Listbox(self.catalogo_frame, width=50)
+        self.lista_catalogo.pack(side=tk.LEFT, padx=10)
+
+        self.boton_agregar = tk.Button(self.root, text="Agregar al carrito")
+        self.boton_agregar.pack(pady=2)
+
+        self.boton_mostrar_carrito = tk.Button(self.root, text="Mostrar carrito")
+        self.boton_mostrar_carrito.pack(pady=2)
+
+        self.boton_finalizar = tk.Button(self.root, text="Finalizar compra")
+        self.boton_finalizar.pack(pady=2)
+
+        self.boton_limpiar = tk.Button(self.root, text="Limpiar carrito")
+        self.boton_limpiar.pack(pady=2)
+
+    def actualizar_catalogo(self, productos):
+        self.lista_catalogo.delete(0, tk.END)
+        for producto in productos:
+            self.lista_catalogo.insert(tk.END, f"{producto['nombre']} - ${producto['precio']}")
+
+    def obtener_producto_seleccionado(self):
+        seleccion = self.lista_catalogo.curselection()
+        if seleccion:
+            return seleccion[0]
+        return None
+_________________________________________________________________________________________________
+# modelo.py 
+
+import json
+
+class Modelo:
+    def __init__(self, archivo_productos="productos.json"):
+        self.archivo_productos = archivo_productos
+        self.productos = self.cargar_productos()
+
+    def cargar_productos(self):
+        with open(self.archivo_productos, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    def obtener_productos(self):
+        return self.productos
+
+    def buscar_productos(self, termino):
+        termino = termino.lower()
+        return [p for p in self.productos if termino in p["nombre"].lower()]
+___________________________________________________________________________________________________
+# controlador
+
+from tkinter import messagebox
+
+class Controlador:
+    def __init__(self, modelo, vista):
+        self.modelo = modelo
+        self.vista = vista
+        self.carrito = []
+
+        self.vista.actualizar_catalogo(self.modelo.obtener_productos())
+        self.vista.boton_buscar.config(command=self.buscar_producto)
+        self.vista.boton_mostrar_todo.config(command=self.mostrar_todo)
+        self.vista.boton_agregar.config(command=self.agregar_al_carrito)
+        self.vista.boton_mostrar_carrito.config(command=self.mostrar_carrito)
+        self.vista.boton_finalizar.config(command=self.finalizar_compra)
+        self.vista.boton_limpiar.config(command=self.limpiar_carrito)
+
+    def buscar_producto(self):
+        termino = self.vista.entry_busqueda.get()
+        productos = self.modelo.buscar_productos(termino)
+        self.vista.actualizar_catalogo(productos)
+
+    def mostrar_todo(self):
+        productos = self.modelo.obtener_productos()
+        self.vista.actualizar_catalogo(productos)
+
+    def agregar_al_carrito(self):
+        idx = self.vista.obtener_producto_seleccionado()
+        productos = self.modelo.obtener_productos()
+        if idx is not None and idx < len(productos):
+            self.carrito.append(productos[idx])
+            messagebox.showinfo("Carrito", f"Agregado: {productos[idx]['nombre']}")
+
+    def mostrar_carrito(self):
+        if not self.carrito:
+            messagebox.showinfo("Carrito", "El carrito está vacío.")
+            return
+
+        resumen = ""
+        total = 0
+        for producto in self.carrito:
+            resumen += f"{producto['nombre']} - ${producto['precio']}\n"
+            total += producto['precio']
+        resumen += f"\nTotal: ${total}"
+        messagebox.showinfo("Carrito", resumen)
+
+    def finalizar_compra(self):
+        if not self.carrito:
+            messagebox.showinfo("Compra", "El carrito está vacío.")
+            return
+        total = sum(p['precio'] for p in self.carrito)
+        self.carrito = []
+        messagebox.showinfo("Compra realizada", f"Gracias por tu compra.\nTotal pagado: ${total}")
+
+    def limpiar_carrito(self):
+        self.carrito = []
+        messagebox.showinfo("Carrito", "El carrito ha sido vaciado.")
+_______________________________________________________________________________________________________
+#main.py
+
+import tkinter as tk
+from modelo import Modelo
+from vista import Vista
+from controller import Controlador
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    modelo = Modelo()
+    vista = Vista(root)
+    controlador = Controlador(modelo, vista)
+    root.mainloop()
+
